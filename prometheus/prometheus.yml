@@ -1,19 +1,25 @@
 global:
-  scrape_interval: 1s    # По умолчанию собираем каждую секунду
-  evaluation_interval: 1s # Оцениваем правила каждую секунду
+  scrape_interval: 1s
+  scrape_timeout: 900ms
+  evaluation_interval: 10s
+  external_labels:
+    environment: local
+    project: fraud-monitoring
 
 scrape_configs:
-  - job_name: 'node'
-    static_configs:
-      - targets: ['node-exporter:9100']
-    scrape_interval: 1s   # Явно указываем для node_exporter
-
-  - job_name: 'fraud_detector'
+  - job_name: fraud_detector
     static_configs:
       - targets: ['fraud_detector:8000']
-    scrape_interval: 1s   # Явно указываем для fraud_detector
-
-  - job_name: 'scoring_writer'
+        labels:
+          service: scoring
+  - job_name: scoring_writer
     static_configs:
       - targets: ['scoring_writer:8001']
-    scrape_interval: 1s   # Явно указываем для scoring_writer
+        labels:
+          service: persistence
+  - job_name: node
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: infrastructure

@@ -1,0 +1,413 @@
+{
+  "uid": "transaction-analytics",
+  "title": "Аналитика транзакций",
+  "schemaVersion": 38,
+  "editable": true,
+  "tags": [
+    "fraud",
+    "hw5"
+  ],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "us_state",
+        "label": "Штат",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "postgres-scores"
+        },
+        "query": "SELECT DISTINCT us_state AS __text, us_state AS __value FROM scores WHERE us_state IS NOT NULL ORDER BY 1",
+        "definition": "SELECT DISTINCT us_state AS __text, us_state AS __value FROM scores WHERE us_state IS NOT NULL ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "'__all'",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "merch",
+        "label": "Продавец",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "postgres-scores"
+        },
+        "query": "SELECT DISTINCT merch AS __text, merch AS __value FROM scores WHERE merch IS NOT NULL ORDER BY 1",
+        "definition": "SELECT DISTINCT merch AS __text, merch AS __value FROM scores WHERE merch IS NOT NULL ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "'__all'",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Число скоров по версии модели",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-scores"
+      },
+      "description": "Все сохранённые в БД скоры за выбранное время записи (фильтры продавца и штата не учитываются)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-scores"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(model_version, 'unknown') AS model_version, COUNT(*) AS scores_count\nFROM scores\nWHERE $__timeFilter(created_at)\nGROUP BY model_version\nORDER BY model_version"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "xTickLabelRotation": -30
+      }
+    },
+    {
+      "id": 2,
+      "title": "Доля фрода по версии модели",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-scores"
+      },
+      "description": "Среднее количество срабатываний модели по заданному порогу (фильтры продавца и штата не учитываются)",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-scores"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(model_version, 'unknown') AS model_version, AVG(CAST(fraud_flag AS DOUBLE PRECISION)) AS fraud_share\nFROM scores\nWHERE $__timeFilter(created_at)\nGROUP BY model_version\nORDER BY model_version"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "xTickLabelRotation": -30
+      }
+    },
+    {
+      "id": 3,
+      "title": "TPS выбранных транзакций",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-scores"
+      },
+      "description": "Скорость сохрания результатов в БД с фильтром по штату и продавцу",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-scores"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH bounds AS (\n    SELECT $__timeFrom()::timestamptz AS start_at, $__timeTo()::timestamptz AS end_at\n), buckets AS (\n    SELECT generate_series(\n        date_bin(INTERVAL '10 seconds', start_at, TIMESTAMPTZ '2000-01-01'),\n        date_bin(INTERVAL '10 seconds', end_at - INTERVAL '1 microsecond', TIMESTAMPTZ '2000-01-01'),\n        INTERVAL '10 seconds'\n    ) AS bucket FROM bounds\n), counts AS (\n    SELECT date_bin(INTERVAL '10 seconds', processed_at, TIMESTAMPTZ '2000-01-01') AS bucket,\n           COUNT(*) AS n\n    FROM scores CROSS JOIN bounds\n    WHERE processed_at >= start_at AND processed_at < end_at\n      AND ('__all' = ANY(ARRAY[${us_state:sqlstring}]::text[]) OR us_state = ANY(ARRAY[${us_state:sqlstring}]::text[]))\n      AND ('__all' = ANY(ARRAY[${merch:sqlstring}]::text[]) OR merch = ANY(ARRAY[${merch:sqlstring}]::text[]))\n    GROUP BY bucket\n)\nSELECT GREATEST(b.bucket, bounds.start_at) AS time,\n       COALESCE(c.n, 0)::double precision / NULLIF(EXTRACT(EPOCH FROM\n           LEAST(b.bucket + INTERVAL '10 seconds', bounds.end_at) - GREATEST(b.bucket, bounds.start_at)), 0) AS tps\nFROM buckets b CROSS JOIN bounds\nLEFT JOIN counts c ON c.bucket = b.bucket\nORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Плотность распределения скоров",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-scores"
+      },
+      "description": "С учетом фильтра на штат и продавца",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-scores"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH selected AS (\n    SELECT LEAST(19, FLOOR(score * 20)::integer) AS bucket\n    FROM scores\n    WHERE $__timeFilter(processed_at)\n      AND score BETWEEN 0 AND 1\n      AND ('__all' = ANY(ARRAY[${us_state:sqlstring}]::text[]) OR us_state = ANY(ARRAY[${us_state:sqlstring}]::text[]))\n      AND ('__all' = ANY(ARRAY[${merch:sqlstring}]::text[]) OR merch = ANY(ARRAY[${merch:sqlstring}]::text[]))\n), counts AS (\n    SELECT bucket, COUNT(*) AS n FROM selected GROUP BY bucket\n), total AS (\n    SELECT COUNT(*) AS n FROM selected\n)\nSELECT TO_CHAR(b.bucket * 0.05, 'FM0.00') || '–' || TO_CHAR((b.bucket + 1) * 0.05, 'FM0.00') AS score_interval,\n       COALESCE(c.n, 0)::double precision / NULLIF(total.n * 0.05, 0) AS density\nFROM generate_series(0, 19) AS b(bucket)\nCROSS JOIN total\nLEFT JOIN counts c USING (bucket)\nORDER BY b.bucket"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "xTickLabelRotation": -30
+      }
+    },
+    {
+      "id": 5,
+      "title": "Доля фрода по категориям",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-scores"
+      },
+      "description": "Последние 1000 записанных результатов в разбивке по категориям покупки",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-scores"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH recent AS (\n    SELECT cat_id, fraud_flag FROM scores\n    ORDER BY id DESC\n    LIMIT 1000\n)\nSELECT COALESCE(cat_id, 'unknown') AS cat_id,\n       AVG(CAST(fraud_flag AS DOUBLE PRECISION)) AS fraud_share\nFROM recent\nGROUP BY cat_id\nORDER BY fraud_share DESC, cat_id"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "xTickLabelRotation": -30
+      }
+    },
+    {
+      "id": 6,
+      "title": "Скорость общего потока · Prometheus",
+      "type": "stat",
+      "description": "Общая скорость обработки и загрузки скоров в БД ",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-metrics"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-metrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(transactions_total[1m]))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    }
+  ],
+  "version": 7
+}

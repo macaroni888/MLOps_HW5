@@ -1,381 +1,320 @@
 {
-  "annotations": {
-    "list": [
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "enable": true,
-        "expr": "model_version_updates_total unless model_version_updates_total offset 30s",
-        "hide": false,
-        "iconColor": "red",
-        "name": "Смена модели",
-        "step": "1s",
-        "textFormat": "Скоринг перешёл на {{version}}",
-        "titleFormat": "Модель {{version}}"
-      }
-    ]
-  },
+  "uid": "scoring",
+  "title": "Запись результатов",
+  "schemaVersion": 38,
+  "version": 3,
   "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": 2,
-  "links": [],
-  "liveNow": false,
+  "tags": [
+    "fraud",
+    "hw5"
+  ],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0.5,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
       "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+      "title": "Скорость записи в базу",
+      "type": "stat",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "prometheus-metrics"
           },
           "editorMode": "code",
-          "expr": "rate(scorings_total[5s])",
-          "instant": false,
-          "legendFormat": "Записей в секунду",
-          "range": true,
-          "refId": "A"
+          "expr": "sum(rate(scorings_total[1m]))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
         }
       ],
-      "title": "Скорость записи скорингов в БД",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
       "fieldConfig": {
         "defaults": {
+          "unit": "ops",
           "color": {
             "mode": "palette-classic"
           },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 0.5,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "rate(scoring_db_write_seconds_sum[5s]) / rate(scoring_db_write_seconds_count[5s])",
-          "instant": false,
-          "legendFormat": "Avg Write Time",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Среднее время записи в БД",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
           }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
-          "values": false
+          "fields": ""
         },
+        "colorMode": "value",
+        "graphMode": "area",
         "textMode": "auto"
-      },
-      "pluginVersion": "9.5.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "fraud_detected_total",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Всего выявлено мошеннических транзакций",
-      "type": "stat"
+      }
     },
     {
+      "id": 6,
+      "title": "Время записи в базу",
+      "type": "timeseries",
+      "description": "",
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus-metrics"
       },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-metrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(scoring_db_write_seconds_sum[1m])) / clamp_min(sum(rate(scoring_db_write_seconds_count[1m])), 0.000001)",
+          "legendFormat": "",
+          "range": true,
+          "instant": false
+        }
+      ],
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "scaleDistribution": {
-              "type": "linear"
-            }
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
           }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Число выявленного фрода",
+      "type": "stat",
+      "description": "Количество транзакций с fraud_flag = 1 с запуска",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-metrics"
       },
-      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-metrics"
+          },
+          "editorMode": "code",
+          "expr": "sum(fraud_detected_total)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Распределение записанных скоров",
+      "type": "heatmap",
+      "description": "Доля записанных скоров в каждом из интервалов в промежуток в 30 секунд",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-metrics"
+          },
+          "editorMode": "code",
+          "expr": "sum by (le) (increase(scoring_fraud_score_bucket[30s]))",
+          "legendFormat": "{{le}}",
+          "range": true,
+          "instant": false,
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
       "options": {
         "calculate": false,
-        "calculation": "",
         "cellGap": 1,
         "color": {
-          "exponent": 0.5,
-          "fill": "orange",
           "mode": "scheme",
-          "reverse": false,
-          "scale": "exponential",
           "scheme": "Oranges",
-          "steps": 64
+          "steps": 64,
+          "scale": "linear"
         },
-        "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
-        },
-        "filterValues": {
-          "le": 1e-09
+        "yAxis": {
+          "axisLabel": "Score",
+          "min": 0,
+          "max": 1
         },
         "legend": {
           "show": true
         },
-        "rowsFrame": {
-          "layout": "auto"
-        },
         "tooltip": {
           "show": true,
-          "yHistogram": true
+          "yHistogram": false
         },
-        "yAxis": {
-          "axisPlacement": "left",
-          "max": 1,
-          "min": 0,
-          "reverse": false,
-          "unit": "none"
+        "filterValues": {
+          "le": 0
         }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "sum(increase(scoring_fraud_score_bucket[30s])) by (le)",
-          "format": "heatmap",
-          "instant": false,
-          "legendFormat": "{{le}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Распределение записанных скоров во времени",
-      "type": "heatmap"
+      }
     }
   ],
-  "refresh": "1s",
-  "schemaVersion": 38,
-  "style": "dark",
-  "tags": [],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-5m",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "",
-  "title": "Scoring Dashboard",
-  "uid": "scoring",
-  "version": 2,
-  "weekStart": ""
+  "annotations": {
+    "list": [
+      {
+        "name": "Модель переключена",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus-metrics"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#FF9830",
+        "expr": "(time() - model_reload_timestamp_seconds >= 0) and (time() - model_reload_timestamp_seconds < 30)",
+        "step": "1s",
+        "titleFormat": "Модель {{version}}",
+        "textFormat": "Скоринг подхватил версию {{version}}"
+      }
+    ]
+  }
 }

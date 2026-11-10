@@ -2,15 +2,17 @@ import json
 import logging
 import os
 import sys
+import time
+from datetime import datetime, timezone
 
 import pandas as pd
 from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from prometheus_client import Counter, Gauge, Histogram, Summary, start_http_server
 
-sys.path.append(os.path.abspath('./src'))  # noqa: PTH100
+sys.path.append(os.path.abspath('./src'))
 from preprocessing import run_preproc
-from scorer import ensure_bootstrap, make_pred
+from scorer import THRESHOLD, ensure_bootstrap, make_pred
 
 
 logging.basicConfig(
@@ -23,7 +25,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Set kafka configuration file
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 TRANSACTIONS_TOPIC = os.getenv("KAFKA_TRANSACTIONS_TOPIC", "transactions")
 SCORING_TOPIC = os.getenv("KAFKA_SCORING_TOPIC", "scoring")
@@ -53,6 +54,28 @@ MODEL_VERSION_UPDATES = Counter(
     ['version'],
 )
 
+PROCESSING_LATENCY = Histogram(
+    'transaction_processing_duration_seconds',
+    'Длительность обработки транзакции и доставки в кафка',
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20),
+)
+PROCESSING_ERRORS = Counter(
+    'transaction_processing_errors_total',
+    'Ошибки при чтении транзакции, ее обработке или доставке в kafka',
+    ['stage'],
+)
+LAST_SUCCESS = Gauge(
+    'transaction_last_success_timestamp_seconds',
+    'Время последней успешной доставки в kafka',
+)
+MODEL_RELOAD_TIME = Gauge(
+    'model_reload_timestamp_seconds',
+    'Время переключения модели',
+    ['version'],
+)
+for stage in ('decode', 'inference', 'delivery'):
+    PROCESSING_ERRORS.labels(stage=stage)
+
 
 class ProcessingService:
     def __init__(self):
@@ -70,6 +93,7 @@ class ProcessingService:
         self.total_transactions = 0
         self.fraud_transactions = 0
         self._seen_model_version = None
+        LAST_SUCCESS.set(time.time())
         start_http_server(METRICS_PORT)
         logger.info("Prometheus метрики доступны на порту %s", METRICS_PORT)
 
@@ -79,6 +103,7 @@ class ProcessingService:
             return
         if model_version != self._seen_model_version:
             MODEL_VERSION_UPDATES.labels(version=model_version).inc()
+            MODEL_RELOAD_TIME.labels(version=model_version).set(time.time())
             logger.info(
                 "Модель сменилась: %s -> %s",
                 self._seen_model_version,
@@ -87,41 +112,47 @@ class ProcessingService:
             self._seen_model_version = model_version
 
     @PROCESSING_TIME.time()
+    @PROCESSING_LATENCY.time()
     def process_message(self, msg):
+        stage = 'decode'
         try:
-            # Десериализация JSON
             data = json.loads(msg.value().decode('utf-8'))
-
-            # Извлекаем ID и данные
             transaction_id = data['transaction_id']
             input_df = pd.DataFrame([data['data']])
 
-            # Препроцессинг и предсказание
+            stage = 'inference'
             processed_df = run_preproc(input_df)
             submission, y_proba, model_version = make_pred(processed_df, "kafka_stream")
-
             score = float(y_proba[0])
-            TRANSACTION_COUNT.inc()
-            FRAUD_SCORE.observe(score)
-            self.total_transactions += 1
-            if score > 0.5:
-                self.fraud_transactions += 1
-            FRAUD_RATIO.set(self.fraud_transactions / self.total_transactions)
             self._record_model_version(model_version)
-
-            # Добавляем ID и версию модели, которая отскорила запрос
             submission['transaction_id'] = transaction_id
             submission['model_version'] = model_version
+            for field in ('us_state', 'merch', 'cat_id'):
+                submission[field] = data['data'].get(field)
+            submission['processed_at'] = datetime.now(timezone.utc).isoformat()
 
-            # Отправка результата в топик scoring
+            stage = 'delivery'
+            delivery = []
             self.producer.produce(
                 SCORING_TOPIC,
                 value=submission.to_json(orient='records'),
+                on_delivery=lambda error, message: delivery.append(error),
             )
-            self.producer.flush()
+            remaining = self.producer.flush(10)
+            if remaining or not delivery or delivery[0] is not None:
+                raise RuntimeError(f"Kafka delivery was not confirmed: {delivery}, pending={remaining}")
+
+            TRANSACTION_COUNT.inc()
+            FRAUD_SCORE.observe(score)
+            self.total_transactions += 1
+            if score > THRESHOLD:
+                self.fraud_transactions += 1
+            FRAUD_RATIO.set(self.fraud_transactions / self.total_transactions)
+            LAST_SUCCESS.set(time.time())
             return True
-        except Exception as e:
-            logger.exception(f"Error processing message: {e}")
+        except Exception:
+            PROCESSING_ERRORS.labels(stage=stage).inc()
+            logger.exception("Error processing message at stage %s", stage)
             return False
 
     def process_messages(self):

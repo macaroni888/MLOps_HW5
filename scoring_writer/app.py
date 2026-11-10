@@ -3,6 +3,7 @@ import logging
 import os
 
 import psycopg2
+from psycopg2 import sql
 from confluent_kafka import Consumer
 from prometheus_client import Counter, Histogram, Summary, start_http_server
 
@@ -51,6 +52,26 @@ def create_table(conn):
         cur.execute("""
             ALTER TABLE scores ADD COLUMN IF NOT EXISTS model_version TEXT;
         """)
+        cur.execute("""
+            ALTER TABLE scores
+                ADD COLUMN IF NOT EXISTS us_state TEXT,
+                ADD COLUMN IF NOT EXISTS merch TEXT,
+                ADD COLUMN IF NOT EXISTS cat_id TEXT,
+                ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS scores_processed_at_idx ON scores (processed_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS scores_state_time_idx ON scores (us_state, processed_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS scores_merch_time_idx ON scores (merch, processed_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS scores_created_at_idx ON scores (created_at)")
+        reader = os.getenv("GRAFANA_POSTGRES_USER", "grafana_reader")
+        password = os.getenv("GRAFANA_POSTGRES_PASSWORD", "grafana_readonly_local")
+        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (reader,))
+        if cur.fetchone() is None:
+            cur.execute(sql.SQL("CREATE ROLE {} LOGIN PASSWORD %s").format(sql.Identifier(reader)), (password,))
+        else:
+            cur.execute(sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD %s").format(sql.Identifier(reader)), (password,))
+        cur.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(reader)))
+        cur.execute(sql.SQL("GRANT SELECT ON TABLE scores TO {}").format(sql.Identifier(reader)))
         conn.commit()
         logger.info("Таблица 'scores' проверена или создана.")
 
@@ -59,13 +80,17 @@ def create_table(conn):
 def insert_score(conn, data):
     with conn.cursor() as cur:
         cur.execute("""
-            INSERT INTO scores (transaction_id, score, fraud_flag, model_version)
-            VALUES (%s, %s, %s, %s);
+            INSERT INTO scores (transaction_id, score, fraud_flag, model_version, us_state, merch, cat_id, processed_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
         """, (
             data["transaction_id"],
             data["score"],
             data["fraud_flag"],
             data.get("model_version"),
+            data.get("us_state"),
+            data.get("merch"),
+            data.get("cat_id"),
+            data.get("processed_at"),
         ))
         conn.commit()
 
@@ -126,6 +151,7 @@ def run_consumer():
             except json.JSONDecodeError as je:
                 logger.exception(f"Ошибка декодирования JSON: {je}")
             except Exception as e:
+                conn.rollback()
                 logger.exception(f"Ошибка обработки сообщения: {e}")
 
     except KeyboardInterrupt:
